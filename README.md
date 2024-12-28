@@ -6,6 +6,7 @@ A collection of task tracking tools designed to help you manage your work effici
 
 - **Todo**: A simple, keyboard-driven todo list manager
 - **BuildIt**: A project and issue tracking system for software development
+- **Dashboard**: A beautiful overview of your tasks and projects
 - More modules coming soon!
 
 ## Installation
@@ -58,6 +59,22 @@ Key bindings:
 - `f`: Find/search
 - `h`: Show help
 - `q`: Quit
+
+### Dashboard
+```bash
+# Run the dashboard
+jtbd-dash
+```
+
+Key bindings:
+- `r`: Refresh statistics
+- `q`: Quit
+
+The dashboard provides:
+- Todo statistics (total tasks, completion rate, due today, high priority)
+- Project statistics (total projects, active projects, open issues, critical issues)
+- Recent activity across both applications
+- Real-time updates with refresh
 
 ## Configuration
 

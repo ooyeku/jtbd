@@ -3,7 +3,7 @@ from setuptools import setup, find_namespace_packages
 setup(
     name="jtbd",
     version="0.1.0",
-    packages=find_namespace_packages(include=['jtbd*', 'todo*', 'buildit*']),
+    packages=find_namespace_packages(include=['jtbd*', 'todo*', 'buildit*', 'dash*']),
     include_package_data=True,
     install_requires=[
         "textual>=0.40.0",
@@ -13,6 +13,7 @@ setup(
         'console_scripts': [
             'todo=todo.__main__:main',
             'buildit=buildit.__main__:main',
+            'jtbd-dash=dash.__main__:main',
         ],
     },
     author="olayeku",
