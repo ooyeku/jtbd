@@ -2,12 +2,17 @@ import sqlite3
 from datetime import datetime
 from typing import List, Optional, Tuple, Dict, Any
 
-class TodoDB:
-    def __init__(self, db_path: str = "todo.db"):
-        self.db_path = db_path
-        self.init_db()
+from jtbd import get_config
 
-    def init_db(self):
+class TodoDB:
+    def __init__(self, db_path: str = None):
+        """Initialize the database connection."""
+        if db_path is None:
+            db_path = get_config().get_todo_db()
+        self.db_path = db_path
+        self._init_db()
+
+    def _init_db(self):
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS todos (

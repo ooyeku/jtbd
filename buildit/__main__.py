@@ -1,7 +1,13 @@
-"""Entry point for the BuildIt application."""
+"""
+BuildIt application entry point.
+"""
 
 from .app import BuildApp
 
-if __name__ == "__main__":
+def main():
+    """Run the BuildIt application."""
     app = BuildApp()
-    app.run() 
+    app.run()
+
+if __name__ == "__main__":
+    main() 

@@ -4,13 +4,16 @@ from typing import List, Dict, Any, Optional
 import json
 import os
 
+from jtbd import get_config
+
+
 class BuildDB:
     """Database manager for the BuildIt application."""
     
     def __init__(self, db_path: str = None):
         """Initialize the database connection."""
         if db_path is None:
-            db_path = os.path.join(os.path.expanduser("~"), ".buildit.db")
+            db_path = get_config().get_buildit_db()
         self.db_path = db_path
         self._init_db()
     

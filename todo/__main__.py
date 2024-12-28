@@ -1,5 +1,13 @@
+"""
+Todo application entry point.
+"""
+
 from .app import TodoApp
 
-if __name__ == "__main__":
+def main():
+    """Run the Todo application."""
     app = TodoApp()
-    app.run() 
+    app.run()
+
+if __name__ == "__main__":
+    main() 

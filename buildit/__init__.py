@@ -1,5 +1,3 @@
-"""
-BuildIt - A software project management CLI tool
-"""
+"""BuildIt application package."""
 
 __version__ = "0.1.0" 
