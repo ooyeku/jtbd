@@ -20,11 +20,13 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
     keywords="todo, project management, task tracking",
-    url="",  # Add your repository URL here
+    url="",  # TODO: add repo url
+    license="MIT",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",
         "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
