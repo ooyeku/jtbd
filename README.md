@@ -63,7 +63,7 @@ Key bindings:
 ### Dashboard
 ```bash
 # Run the dashboard
-jtbd-dash
+dash
 ```
 
 Key bindings:

@@ -13,7 +13,7 @@ setup(
         'console_scripts': [
             'todo=todo.__main__:main',
             'buildit=buildit.__main__:main',
-            'jtbd-dash=dash.__main__:main',
+            'dash=dash.__main__:main',
         ],
     },
     author="olayeku",
