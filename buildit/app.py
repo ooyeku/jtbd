@@ -160,10 +160,103 @@ class AddIssueModal(ModalScreen):
         except Exception as e:
             self.app.notify(f"Error adding issue: {str(e)}", severity="error")
 
+class EditIssueModal(ModalScreen):
+    """Modal screen for editing issue details."""
+    
+    BINDINGS = [Binding("escape", "cancel", "Cancel")]
+    
+    class Submitted(Message):
+        """Message sent when an issue is updated."""
+        def __init__(self, issue_id: int, issue_data: dict) -> None:
+            self.issue_id = issue_id
+            self.issue_data = issue_data
+            super().__init__()
+    
+    def __init__(self, issue_id: int, issue_data: dict):
+        super().__init__()
+        self.issue_id = issue_id
+        self.issue_data = issue_data
+    
+    def compose(self) -> ComposeResult:
+        tags = json.loads(self.issue_data["tags"])
+        priority_map = {1: "Low", 3: "Medium", 5: "High"}
+        current_priority = priority_map.get(self.issue_data["priority"], "Low")
+        
+        yield Container(
+            Static(f"Edit Issue: {self.issue_data['title']}", id="modal-title"),
+            Select(
+                [(type_, type_) for type_ in ["Feature", "Bug", "Task"]],
+                value=self.issue_data["type"],
+                id="type"
+            ),
+            Input(value=self.issue_data["title"], placeholder="Title", id="title"),
+            Input(value=self.issue_data["description"] or "", placeholder="Description", id="description"),
+            Input(value=self.issue_data["due_date"] or "", placeholder="Due Date (YYYY-MM-DD)", id="due-date"),
+            Select(
+                [("Low", "Low"), ("Medium", "Medium"), ("High", "High")],
+                value=current_priority,
+                id="priority"
+            ),
+            Input(value=self.issue_data["assigned_to"] or "", placeholder="Assigned To", id="assigned-to"),
+            Input(value=", ".join(tags), placeholder="Tags (comma-separated)", id="tags"),
+            Horizontal(
+                Button("Cancel", variant="default", id="cancel"),
+                Button("Save", variant="primary", id="save"),
+                classes="buttons"
+            ),
+            id="edit-issue-modal",
+        )
+    
+    def on_mount(self) -> None:
+        self.query_one("#title").focus()
+    
+    def action_cancel(self) -> None:
+        self.app.pop_screen()
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel":
+            self.app.pop_screen()
+        elif event.button.id == "save":
+            self._submit_form()
+    
+    def _submit_form(self) -> None:
+        try:
+            title = self.query_one("#title").value.strip()
+            if not title:
+                self.app.notify("Title is required", severity="error")
+                return
+            
+            type_ = self.query_one("#type").value
+            description = self.query_one("#description").value.strip()
+            due_date = self.query_one("#due-date").value.strip() or None
+            priority_map = {"Low": 1, "Medium": 3, "High": 5}
+            priority = priority_map[self.query_one("#priority").value]
+            assigned_to = self.query_one("#assigned-to").value.strip()
+            tags = [tag.strip() for tag in self.query_one("#tags").value.split(",") if tag.strip()]
+            
+            issue_data = {
+                "type": type_,
+                "title": title,
+                "description": description,
+                "due_date": due_date,
+                "priority": priority,
+                "assigned_to": assigned_to,
+                "tags": tags
+            }
+            
+            self.post_message(self.Submitted(self.issue_id, issue_data))
+            self.app.pop_screen()
+            
+        except Exception as e:
+            self.app.notify(f"Error updating issue: {str(e)}", severity="error")
+
 class ViewIssueModal(ModalScreen):
     """Modal screen for viewing issue details."""
     
-    BINDINGS = [Binding("escape", "close", "Close")]
+    BINDINGS = [
+        Binding("escape", "close", "Close"),
+        Binding("e", "edit", "Edit")
+    ]
     
     def __init__(self, issue_data: dict, comments: list):
         super().__init__()
@@ -187,16 +280,25 @@ class ViewIssueModal(ModalScreen):
                   for c in self.comments],
                 id="issue-details"
             ),
-            Button("Close", variant="primary", id="close"),
+            Horizontal(
+                Button("Close", variant="default", id="close"),
+                Button("Edit", variant="primary", id="edit"),
+                classes="buttons"
+            ),
             id="view-issue-modal",
         )
-
+    
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close":
             self.app.pop_screen()
-
+        elif event.button.id == "edit":
+            self.action_edit()
+    
     def action_close(self) -> None:
         self.app.pop_screen()
+    
+    def action_edit(self) -> None:
+        self.app.push_screen(EditIssueModal(self.issue_data["id"], self.issue_data))
 
 class AddCommentModal(ModalScreen):
     """Modal screen for adding comments."""
@@ -422,6 +524,26 @@ class BuildApp(App):
         color: $text;
         text-style: bold;
         height: 1;
+        text-align: center;
+    }
+
+    DataTable > .datatable--row {
+        height: 1;
+        padding: 0 1;
+    }
+
+    DataTable > .datatable--header-hover {
+        background: $primary-lighten-2;
+    }
+
+    DataTable > .datatable--row-highlighted {
+        background: $boost;
+    }
+
+    DataTable > .datatable--cursor {
+        background: $accent;
+        color: $text;
+        text-style: bold;
     }
 
     /* Bottom bar */
@@ -544,8 +666,15 @@ class BuildApp(App):
         """Set up the projects view."""
         table = self.query_one("#main-table", DataTable)
         current_row = table.cursor_row
-        table.clear()
-        table.add_columns("ID", "Name", "Description", "Version", "Status", "Last Updated")
+        table.clear(columns=True)  # Clear both rows and columns
+        
+        # Add columns with specific widths
+        table.add_column("ID", width=6)
+        table.add_column("Name", width=20)
+        table.add_column("Description", width=35)
+        table.add_column("Version", width=10)
+        table.add_column("Status", width=12)
+        table.add_column("Last Updated", width=20)
         
         # Update help text and button to show current view
         self.query_one("#help-text").update("[bold blue]Projects View[/] - Press ? for help")
@@ -554,12 +683,12 @@ class BuildApp(App):
         projects = self.db.get_projects()
         for project in projects:
             table.add_row(
-                str(project["id"]),
+                str(project["id"]).rjust(4),
                 project["name"],
-                project["description"] or "",
-                project["version"],
-                project["status"],
-                project["last_updated"]
+                project["description"] or "-",
+                project["version"].center(10),
+                project["status"].center(12),
+                project["last_updated"].center(20)
             )
         
         # Restore cursor position or select first row
@@ -573,11 +702,17 @@ class BuildApp(App):
         """Set up the issues view."""
         table = self.query_one("#main-table", DataTable)
         current_row = table.cursor_row
-        table.clear()
-        table.add_columns(
-            "ID", "Type", "Title", "Priority", "Status",
-            "Assigned To", "Due Date", "Tags"
-        )
+        table.clear(columns=True)  # Clear both rows and columns
+        
+        # Add columns with specific widths
+        table.add_column("ID", width=6)
+        table.add_column("Type", width=10)
+        table.add_column("Title", width=30)
+        table.add_column("Priority", width=10)
+        table.add_column("Status", width=12)
+        table.add_column("Assigned To", width=15)
+        table.add_column("Due Date", width=12)
+        table.add_column("Tags", width=20)
         
         # Update help text and button to show current view
         project_name = ""
@@ -594,15 +729,16 @@ class BuildApp(App):
         issues = self.db.get_issues(self.current_project_id)
         for issue in issues:
             tags = json.loads(issue["tags"])
+            priority_stars = "⭐" * issue["priority"]
             table.add_row(
-                str(issue["id"]),
-                issue["type"],
+                str(issue["id"]).rjust(4),
+                issue["type"].center(10),
                 issue["title"],
-                "⭐" * issue["priority"],
-                issue["status"],
-                issue["assigned_to"] or "",
-                issue["due_date"] or "",
-                ", ".join(tags)
+                priority_stars.center(10),
+                issue["status"].center(12),
+                issue["assigned_to"] or "-",
+                (issue["due_date"] or "-").center(12),
+                ", ".join(tags) if tags else "-"
             )
         
         # Restore cursor position or select first row
@@ -720,8 +856,10 @@ class BuildApp(App):
                     self.notify("Project status updated")
                     self.setup_projects_view()
             else:
-                current_status = table.get_cell_at(Coordinate(table.cursor_row, 4))
-                new_status = "Done" if current_status != "Done" else "Open"
+                current_status = table.get_cell_at(Coordinate(table.cursor_row, 4)).strip()
+                # Check if current status is any form of closed/done/completed
+                is_closed = current_status.lower() in ('closed', 'done', 'completed')
+                new_status = "Open" if is_closed else "Done"
                 if self.db.update_issue(item_id, status=new_status):
                     self.notify("Issue status updated")
                     self.setup_issues_view()
@@ -832,3 +970,21 @@ class BuildApp(App):
     def action_search(self) -> None:
         """Show the search modal."""
         self.push_screen(SearchModal())
+
+    def on_edit_issue_modal_submitted(self, message: EditIssueModal.Submitted) -> None:
+        """Handle the submitted message from edit issue modal."""
+        try:
+            if self.db.update_issue(
+                message.issue_id,
+                type=message.issue_data["type"],
+                title=message.issue_data["title"],
+                description=message.issue_data["description"],
+                priority=message.issue_data["priority"],
+                assigned_to=message.issue_data["assigned_to"],
+                due_date=message.issue_data["due_date"],
+                tags=message.issue_data["tags"]
+            ):
+                self.notify("Issue updated successfully")
+                self.setup_issues_view()
+        except Exception as e:
+            self.notify(f"Error updating issue: {str(e)}", severity="error")
