@@ -121,10 +121,35 @@ class TodoStats(Container):
         margin: 0 1;
         padding: 1;
     }
+
+    .activity-container {
+        width: 100%;
+        height: auto;
+        margin: 0 1;
+        layout: vertical;
+    }
+    
+    .sparkline-container {
+        layout: vertical;
+    }
     
     TodoStats Sparkline {
         height: 5;
-        margin: 1;
+        width: 100%;
+        margin: 0;
+    }
+
+    .day-labels {
+        layout: horizontal;
+        width: 100%;
+        height: 1;
+        padding: 0 2;
+        color: $text-muted;
+    }
+
+    .day-label {
+        width: 1fr;
+        align: center middle;
     }
     """
     
@@ -134,6 +159,7 @@ class TodoStats(Container):
         self._cards = {}
         self._log = None
         self._sparkline = None
+        self._day_labels = None
     
     def compose(self) -> ComposeResult:
         yield Label("Todo Overview", id="todo-title")
@@ -147,9 +173,14 @@ class TodoStats(Container):
             yield self._cards["due"]
             yield self._cards["priority"]
         
-        self._sparkline = Sparkline(data=[0] * 7, summary_function=max)
         yield Label("7-Day Activity")
-        yield self._sparkline
+        with Container(classes="activity-container"):
+            self._sparkline = Sparkline(data=[0] * 7, summary_function=max)
+            yield self._sparkline
+            with Container(classes="day-labels") as day_labels:
+                self._day_labels = day_labels
+                for _ in range(7):
+                    yield Label("", classes="day-label")
         
         self._log = RichLog()
         yield self._log
@@ -171,39 +202,15 @@ class TodoStats(Container):
         self._cards["due"].update_value(str(due_today), due_rate)
         self._cards["priority"].update_value(str(high_priority), priority_rate)
         
-        # Update activity sparkline
+        # Update activity sparkline and day labels
         activity_data = self._get_daily_activity()
         self._sparkline.data = activity_data
         
-        # Update upcoming tasks
-        self._log.clear()
-        self._log.write("[b]Upcoming Tasks:[/b]")
-        
-        with sqlite3.connect(self.db.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute("""
-                SELECT title, due_date, priority,
-                       CASE WHEN completed = 1 THEN '✓' ELSE '○' END as status
-                FROM todos
-                WHERE due_date IS NOT NULL 
-                  AND date(due_date) >= date('now')
-                  AND completed = 0
-                ORDER BY due_date ASC
-                LIMIT 5
-            """)
-            tasks = cursor.fetchall()
-            
-            if not tasks:
-                self._log.write("No upcoming tasks")
-            else:
-                for task in tasks:
-                    priority_marker = "🔥" if task["priority"] >= 2 else "  "
-                    due_date = datetime.strptime(task["due_date"], "%Y-%m-%d").strftime("%Y-%m-%d")
-                    days_left = (datetime.strptime(due_date, "%Y-%m-%d").date() - datetime.now().date()).days
-                    due_text = f"[red]({days_left}d left)[/red]" if days_left <= 2 else f"({days_left}d left)"
-                    self._log.write(
-                        f"{priority_marker} {task['status']} {due_date} {due_text}: {task['title']}"
-                    )
+        # Update day labels
+        today = datetime.now().date()
+        day_names = [(today - timedelta(days=i)).strftime("%a") for i in range(6, -1, -1)]
+        for label, day in zip(self._day_labels.query(".day-label"), day_names):
+            label.update(day)
     
     def _get_total_tasks(self) -> int:
         with sqlite3.connect(self.db.db_path) as conn:
@@ -283,10 +290,35 @@ class BuildStats(Container):
         margin: 0 1;
         padding: 1;
     }
+
+    .activity-container {
+        width: 100%;
+        height: auto;
+        margin: 0 1;
+        layout: vertical;
+    }
+    
+    .sparkline-container {
+        layout: vertical;
+    }
     
     BuildStats Sparkline {
         height: 5;
-        margin: 1;
+        width: 100%;
+        margin: 0;
+    }
+
+    .day-labels {
+        layout: horizontal;
+        width: 100%;
+        height: 1;
+        padding: 0 2;
+        color: $text-muted;
+    }
+
+    .day-label {
+        width: 1fr;
+        align: center middle;
     }
     """
     
@@ -296,6 +328,7 @@ class BuildStats(Container):
         self._cards = {}
         self._log = None
         self._sparkline = None
+        self._day_labels = None
     
     def compose(self) -> ComposeResult:
         yield Label("Project Overview", id="build-title")
@@ -309,9 +342,14 @@ class BuildStats(Container):
             yield self._cards["open"]
             yield self._cards["critical"]
         
-        self._sparkline = Sparkline(data=[0] * 7, summary_function=max)
         yield Label("7-Day Issue Activity")
-        yield self._sparkline
+        with Container(classes="activity-container"):
+            self._sparkline = Sparkline(data=[0] * 7, summary_function=max)
+            yield self._sparkline
+            with Container(classes="day-labels") as day_labels:
+                self._day_labels = day_labels
+                for _ in range(7):
+                    yield Label("", classes="day-label")
         
         self._log = RichLog()
         yield self._log
@@ -333,9 +371,15 @@ class BuildStats(Container):
             self._cards["open"].update_value(str(open_issues), 100 - critical_rate)
             self._cards["critical"].update_value(str(critical_issues), critical_rate)
             
-            # Update issue activity sparkline
+            # Update issue activity sparkline and day labels
             activity_data = self._get_daily_activity()
             self._sparkline.data = activity_data
+            
+            # Update day labels
+            today = datetime.now().date()
+            day_names = [(today - timedelta(days=i)).strftime("%a") for i in range(6, -1, -1)]
+            for label, day in zip(self._day_labels.query(".day-label"), day_names):
+                label.update(day)
             
             # Update project status
             self._log.clear()
